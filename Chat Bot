@@ -1,0 +1,55 @@
+import streamlit as st
+import google.generativeai as genai
+import PIL.Image
+
+# --- AYARLAR ---
+genai.configure(api_key="API_KEY_BURAYA") # Buraya kendi key'ini yapıştır kanka
+
+# Sayfa Yapılandırması
+st.set_page_config(page_title="ARAS ULTIMATE AI", page_icon="🔥", layout="wide")
+
+# Kenar Çubuğu (Özellikleri buradan yönetirsin)
+with st.sidebar:
+    st.title("⚙️ Bot Ayarları")
+    model_choice = st.selectbox("Model Seç", ["gemini-1.5-flash", "gemini-1.5-pro"])
+    system_prompt = st.text_area("Botun Kişiliği (Sistem Talimatı)", 
+                                 "Sen Aras'ın geliştirdiği, her konuda uzman, samimi ve zeki bir asistansın.")
+    uploaded_file = st.file_uploader("Dosya veya Fotoğraf Yükle (PDF, Resim vb.)", type=['png', 'jpg', 'jpeg', 'pdf'])
+    if st.button("Hafızayı Temizle"):
+        st.session_state.messages = []
+
+# Modeli Başlat
+model = genai.GenerativeModel(model_name=model_choice, system_instruction=system_prompt)
+
+st.title("🚀 Aras'ın Efsane Gemini Botu")
+
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+# Mesajları Göster
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# Sohbet Girişi
+if prompt := st.chat_input("Neler yapabiliriz?"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    # Gemini'ye Gönderilecek İçerik Hazırlığı
+    content_list = [prompt]
+    
+    # Eğer dosya yüklendiyse listeye ekle
+    if uploaded_file:
+        img = PIL.Image.open(uploaded_file)
+        content_list.append(img)
+        st.info("Dosya işleniyor...")
+
+    with st.chat_message("assistant"):
+        try:
+            response = model.generate_content(content_list)
+            st.markdown(response.text)
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+        except Exception as e:
+            st.error(f"Hata: {e}")
